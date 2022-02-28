@@ -1,0 +1,79 @@
+---
+title: "EDS241: Assignment 4"
+author: "Jake Eisaguirre"
+date: '`r format(Sys.time(), "%m/%d/%Y")`'
+output: 
+  pdf_document:
+    toc: false
+    number_sections: yes
+header-includes:
+  - \setlength{\parindent}{1em}
+  - \usepackage{float}
+--- 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+librarian::shelf(here, tidyverse, janitor, estimatr, kableExtra, broom, car, AER)
+```
+
+
+##### Clean Data
+
+\noindent The following code loads and cleans the data.
+```{r}
+data <- read_csv(here("EU_sardines.csv")) %>% 
+  clean_names()
+```
+
+##### (a) Estimate a bivariate regression of log(volume_sold_kg) on log(price euro_kg). What is the price elasticity of demand for sardines? Test the null hypothesis that the price elasticity is equal to -1.
+
+\noindent The following code estimates the bivariate regression and price elasticity demand for sardines
+```{r}
+
+mod1 <- lm_robust(log(volume_sold_kg) ~ log(price_euro_kg), data = data)
+
+tidy(mod1) %>% 
+  kable()
+
+```
+
+
+
+##### (b) Like in Lecture 8 (see the IV.R script), we will use wind_m_s as an instrument for log(price_euro_kg). To begin, estimate the first-stage regression relating log(price_euro_kg) to wind_m_s. Interpret the estimated coefficient on wind speed. Does it have the expected sign? Also test for the relevance of the instrument and whether it is a “weak” instrument by reporting the proper F-statistic. 
+
+```{r}
+
+fsl <- lm(log(price_euro_kg) ~ wind_m_s, data = data)
+summary(fsl)
+
+linearHypothesis(fsl, c("wind_m_s = 0"), white.adjust = "hc2")
+
+```
+
+
+
+##### (c) Estimate the TSLS estimator of the price elasticity of demand for sardines using wind_m_s as an instrument for log(price_euro_kg). What is the estimated price elasticity of demand for sardines? 
+
+```{r}
+
+tsls <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) | wind_m_s, data = data)
+summary(tsls)
+
+
+
+```
+
+
+
+##### (d) Repeat the exercise in (c), but include fixed effects for each year, month, and country. [Hint: you can use the command “as.factor(country) + as.factor(year) +as.factor(month)” to the ivreg function in R]. Report the estimated price elasticity of demand and the F-statistic testing for relevant and non-weak instruments.
+
+```{r}
+
+tsls3 <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) | wind_m_s + as.factor(country) + 
+                 as.factor(year) + as.factor(month), data = data)
+
+summary(tsls3)
+
+```
+
