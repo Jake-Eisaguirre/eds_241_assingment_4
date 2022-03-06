@@ -14,7 +14,7 @@ header-includes:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-librarian::shelf(here, tidyverse, janitor, estimatr, kableExtra, broom, car, AER)
+librarian::shelf(here, tidyverse, janitor, estimatr, kableExtra, broom, car, AER, lmtest, sandwich)
 ```
 
 
@@ -33,11 +33,13 @@ data <- read_csv(here("EU_sardines.csv")) %>%
 
 mod1 <- lm_robust(log(volume_sold_kg) ~ log(price_euro_kg), data = data)
 
-tidy(mod1) %>% 
+tidy(mod1) %>%
   kable()
 
-```
+linearHypothesis(mod1, c("log(price_euro_kg) = -1"), white.adjust = "hc2")
 
+```
+\noindent The price elasticity for demand sardines is -1.54 percent change in quantity for a 1% change in price
 
 
 ##### (b) Like in Lecture 8 (see the IV.R script), we will use wind_m_s as an instrument for log(price_euro_kg). To begin, estimate the first-stage regression relating log(price_euro_kg) to wind_m_s. Interpret the estimated coefficient on wind speed. Does it have the expected sign? Also test for the relevance of the instrument and whether it is a “weak” instrument by reporting the proper F-statistic. 
@@ -47,10 +49,17 @@ tidy(mod1) %>%
 fsl <- lm(log(price_euro_kg) ~ wind_m_s, data = data)
 summary(fsl)
 
+tidy(fsl) %>%
+  kable()
+
 linearHypothesis(fsl, c("wind_m_s = 0"), white.adjust = "hc2")
 
 ```
+\noindent Wind coefficient: For every 1 unit increase in wind speed (+1 m/s) we expect to see the log(price_euro_kg) to increase by 0.067346.
 
+\noindent Yes it does have the expected sign because we would think that as wind speeds increase, boats will not be able to fish due to bad weather thus driving the price of sardines up due to a decrease in supply.
+
+\noindent It is not a weak instrument as the coefficient for wind_m_s is not zero (0.067346) and the F-statistic is quite large at 144.65
 
 
 ##### (c) Estimate the TSLS estimator of the price elasticity of demand for sardines using wind_m_s as an instrument for log(price_euro_kg). What is the estimated price elasticity of demand for sardines? 
@@ -60,11 +69,12 @@ linearHypothesis(fsl, c("wind_m_s = 0"), white.adjust = "hc2")
 tsls <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) | wind_m_s, data = data)
 summary(tsls)
 
-
+tidy(tsls) %>%
+  kable()
 
 ```
 
-
+\noindent The price elasticity for demand sardines is -1.088 percent change in quantity for a 1% change in price
 
 ##### (d) Repeat the exercise in (c), but include fixed effects for each year, month, and country. [Hint: you can use the command “as.factor(country) + as.factor(year) +as.factor(month)” to the ivreg function in R]. Report the estimated price elasticity of demand and the F-statistic testing for relevant and non-weak instruments.
 
@@ -75,5 +85,11 @@ tsls3 <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) | wind_m_s + as.factor(c
 
 summary(tsls3)
 
+tidy(tsls3) %>%
+  kable()
+
+coeftest(tsls3, vcov = vcovHC(tsls3, type = "HC2"))[, "Std. Error"]
+
 ```
 
+\noindent The price elasticity for demand sardines is 0.36697 percent change in quantity for a 1% change in price
