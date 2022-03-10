@@ -28,29 +28,43 @@ data <- read_csv(here("EU_sardines.csv")) %>%
 
 ##### (a) Estimate a bivariate regression of log(volume_sold_kg) on log(price euro_kg). What is the price elasticity of demand for sardines? Test the null hypothesis that the price elasticity is equal to -1.
 
+
 \noindent The following code estimates the bivariate regression and price elasticity demand for sardines
 ```{r}
 
 mod1 <- lm_robust(log(volume_sold_kg) ~ log(price_euro_kg), data = data)
 
+```
+
+```{r}
 tidy(mod1) %>%
   kable()
+```
 
+```{r}
 linearHypothesis(mod1, c("log(price_euro_kg) = -1"), white.adjust = "hc2")
 
 ```
-\noindent The price elasticity for demand sardines is -1.54 percent change in quantity for a 1% change in price
+\noindent The price elasticity for demand sardines is -1.54% change in quantity for a 1% change in price. Based on the linear hypothesis test we would reject the null hypothesis that the price elasticity is equal -1. Because we have a significant p-value and an F statistic greater than 10.
 
 
 ##### (b) Like in Lecture 8 (see the IV.R script), we will use wind_m_s as an instrument for log(price_euro_kg). To begin, estimate the first-stage regression relating log(price_euro_kg) to wind_m_s. Interpret the estimated coefficient on wind speed. Does it have the expected sign? Also test for the relevance of the instrument and whether it is a “weak” instrument by reporting the proper F-statistic. 
 
+
+
+\noindent The following code answers question b
 ```{r}
 
 fsl <- lm(log(price_euro_kg) ~ wind_m_s, data = data)
-summary(fsl)
 
+```
+
+```{r}
 tidy(fsl) %>%
   kable()
+```
+
+```{r}
 
 linearHypothesis(fsl, c("wind_m_s = 0"), white.adjust = "hc2")
 
@@ -59,37 +73,56 @@ linearHypothesis(fsl, c("wind_m_s = 0"), white.adjust = "hc2")
 
 \noindent Yes it does have the expected sign because we would think that as wind speeds increase, boats will not be able to fish due to bad weather thus driving the price of sardines up due to a decrease in supply.
 
-\noindent It is not a weak instrument as the coefficient for wind_m_s is not zero (0.067346) and the F-statistic is quite large at 144.65
+\noindent It is not a weak instrument as the F-statistic is quite large at 144.65, which is greater than 10.
 
 
 ##### (c) Estimate the TSLS estimator of the price elasticity of demand for sardines using wind_m_s as an instrument for log(price_euro_kg). What is the estimated price elasticity of demand for sardines? 
 
+
+
+\noindent The following code answers question c
 ```{r}
 
 tsls <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) | wind_m_s, data = data)
-summary(tsls)
 
-tidy(tsls) %>%
-  kable()
+
 
 ```
 
-\noindent The price elasticity for demand sardines is -1.088 percent change in quantity for a 1% change in price
+```{r}
+tidy(tsls) %>%
+  kable()
+```
+
+\noindent The two-stage least-squares estimated price elasticity for demand of sardines is -1.088% change in quantity for a 1% change in price
 
 ##### (d) Repeat the exercise in (c), but include fixed effects for each year, month, and country. [Hint: you can use the command “as.factor(country) + as.factor(year) +as.factor(month)” to the ivreg function in R]. Report the estimated price elasticity of demand and the F-statistic testing for relevant and non-weak instruments.
 
+
+
+\noindent The following code answers question d
 ```{r}
 
-tsls3 <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) | wind_m_s + as.factor(country) + 
+tsls3 <- ivreg(log(volume_sold_kg) ~ log(price_euro_kg) + as.factor(country) + 
+                 as.factor(year) + as.factor(month) | wind_m_s + as.factor(country) + 
                  as.factor(year) + as.factor(month), data = data)
 
-summary(tsls3)
-
-tidy(tsls3) %>%
-  kable()
-
-coeftest(tsls3, vcov = vcovHC(tsls3, type = "HC2"))[, "Std. Error"]
 
 ```
 
-\noindent The price elasticity for demand sardines is 0.36697 percent change in quantity for a 1% change in price
+```{r}
+tidy(tsls3) %>%
+  kable()
+
+```
+
+
+```{r}
+mod2 <- lm_robust(log(price_euro_kg) ~ wind_m_s + as.factor(country) + 
+                 as.factor(year) + as.factor(month), data = data)
+
+linearHypothesis(mod2, c("wind_m_s = 0"), white.adjust = "hc2")
+
+```
+
+\noindent The price elasticity for demand sardines is -1.25% change in quantity for a 1% change in price. Based on the F statistic of 5.645 than wind_m_s is a weak instrument.
